@@ -63,20 +63,16 @@ cp "$SSHD_CONFIG" "$BACKUP_FILE"
 echo "Backup created:"
 echo "$BACKUP_FILE"
 
-# Install tunnel-manager
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_SCRIPT="$SCRIPT_DIR/tunnel-manager"
+# Download and install tunnel-manager
+REPO_RAW_URL="https://raw.githubusercontent.com/parsa6890/ssh-tunnel-manager/main"
 
-if [[ ! -f "$SOURCE_SCRIPT" ]]; then
-    echo "Error: tunnel-manager not found."
-    echo "Expected location:"
-    echo "$SOURCE_SCRIPT"
+echo "Downloading tunnel-manager..."
+
+if ! curl -fsSL "$REPO_RAW_URL/tunnel-manager" -o "$INSTALL_PATH"; then
+    echo "Error: Failed to download tunnel-manager."
     exit 1
 fi
 
-echo "Installing tunnel-manager..."
-
-cp "$SOURCE_SCRIPT" "$INSTALL_PATH"
 chmod 755 "$INSTALL_PATH"
 
 echo "Installed to:"
