@@ -1,6 +1,28 @@
 # SSH Tunnel Manager
 
+[🇬🇧 English](README.md)
+
 یک ابزار ساده مبتنی بر Bash برای ایجاد و مدیریت کاربران SSH Tunnel روی سرورهای Ubuntu.
+
+## نصب
+
+نصب مستقیم SSH Tunnel Manager از GitHub:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/parsa6890/ssh-tunnel-manager/main/install.sh | sudo bash
+```
+
+Installer به‌صورت خودکار:
+
+1. سیستم‌عامل و OpenSSH Server را بررسی می‌کند
+2. در صورت نیاز گروه `tunnelusers` را ایجاد می‌کند
+3. ابزار `tunnel-manager` را نصب می‌کند
+4. پورت‌های SSH یعنی 22 و 443 را تنظیم می‌کند
+5. تنظیمات SSH مربوط به گروه `tunnelusers` را اضافه می‌کند
+6. صحت تنظیمات SSH را بررسی می‌کند
+7. سرویس SSH را بدون Restart کردن Reload می‌کند
+
+قبل از اعمال تغییرات، یک نسخه پشتیبان از تنظیمات SSH ایجاد می‌شود.
 
 ## امکانات
 
@@ -17,7 +39,8 @@
 * Ubuntu Server
 * OpenSSH Server
 * دسترسی Root یا sudo
-* وجود گروه `tunnelusers`
+
+Installer در صورت نبودن گروه `tunnelusers`، آن را به‌صورت خودکار ایجاد می‌کند.
 
 ## دستورات
 
@@ -159,7 +182,8 @@ Match Group tunnelusers
 ssh-tunnel-manager/
 ├── tunnel-manager
 ├── install.sh
-└── README.md
+├── README.md
+└── README-FA.md
 ```
 
 ## لایسنس
