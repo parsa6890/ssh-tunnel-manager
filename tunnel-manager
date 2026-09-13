@@ -1,0 +1,174 @@
+#!/bin/bash
+
+GROUP="tunnelusers"
+
+case "$1" in
+
+add)
+    USER="$2"
+    DAYS="$3"
+
+    if [[ -z "$USER" || -z "$DAYS" ]]; then
+        echo "Usage: tunnel-manager add <username> <days>"
+        exit 1
+    fi
+
+    if ! [[ "$DAYS" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Error: Days must be a positive number."
+        exit 1
+    fi
+
+    if id "$USER" &>/dev/null; then
+        echo "Error: User already exists."
+        exit 1
+    fi
+
+    EXPIRY=$(date -d "+$DAYS days" +%Y-%m-%d)
+
+    if ! useradd -m -s /bin/bash "$USER"; then
+        echo "Error: Failed to create user."
+        exit 1
+    fi
+
+    echo "Set password for $USER:"
+    if ! passwd "$USER"; then
+        echo "Error: Failed to set password."
+        userdel -r "$USER"
+        exit 1
+    fi
+
+    if ! usermod -aG "$GROUP" "$USER"; then
+        echo "Error: Failed to add user to group $GROUP."
+        userdel -r "$USER"
+        exit 1
+    fi
+
+    if ! chage -E "$EXPIRY" "$USER"; then
+        echo "Error: Failed to set expiration date."
+        userdel -r "$USER"
+        exit 1
+    fi
+
+    echo ""
+    echo "User created successfully!"
+    echo "Username: $USER"
+    echo "Expires in: $DAYS days"
+    ;;
+
+extend)
+    USER="$2"
+    DAYS="$3"
+
+    if [[ -z "$USER" || -z "$DAYS" ]]; then
+        echo "Usage: tunnel-manager extend <username> <days>"
+        exit 1
+    fi
+
+    if ! [[ "$DAYS" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Error: Days must be a positive number."
+        exit 1
+    fi
+
+    if ! id "$USER" &>/dev/null; then
+        echo "Error: User does not exist."
+        exit 1
+    fi
+
+    EXPIRY=$(chage -l "$USER" | grep "Account expires" | cut -d: -f2 | xargs)
+
+    TODAY=$(date +%Y-%m-%d)
+
+    if [[ "$EXPIRY" == "never" ]]; then
+        NEW_EXPIRY=$(date -d "+$DAYS days" +%Y-%m-%d)
+
+    elif [[ $(date -d "$EXPIRY" +%s) -lt $(date -d "$TODAY" +%s) ]]; then
+        NEW_EXPIRY=$(date -d "+$DAYS days" +%Y-%m-%d)
+
+    else
+        NEW_EXPIRY=$(date -d "$EXPIRY +$DAYS days" +%Y-%m-%d)
+    fi
+
+    if ! chage -E "$NEW_EXPIRY" "$USER"; then
+        echo "Error: Failed to update expiration date."
+        exit 1
+    fi
+
+    echo "User extended successfully!"
+    echo "New expiration date: $NEW_EXPIRY"
+    ;;
+
+status)
+    USER="$2"
+
+    if [[ -z "$USER" ]]; then
+        echo "Usage: tunnel-manager status <username>"
+        exit 1
+    fi
+
+    if ! id "$USER" &>/dev/null; then
+        echo "Error: User does not exist."
+        exit 1
+    fi
+
+    EXPIRY=$(chage -l "$USER" | grep "Account expires" | cut -d: -f2 | xargs)
+
+    if [[ "$EXPIRY" == "never" ]]; then
+        echo "User: $USER"
+        echo "Expires: Never"
+        exit 0
+    fi
+
+    TODAY=$(date +%Y-%m-%d)
+
+    EXPIRY_SECONDS=$(date -d "$EXPIRY 00:00:00" +%s)
+    TODAY_SECONDS=$(date -d "$TODAY 00:00:00" +%s)
+
+    DAYS_LEFT=$(( (EXPIRY_SECONDS - TODAY_SECONDS) / 86400 ))
+
+    if [[ "$DAYS_LEFT" -lt 0 ]]; then
+        DAYS_AGO=$(( -DAYS_LEFT ))
+        STATUS="Expired"
+        echo "User: $USER"
+        echo "Status: $STATUS"
+        echo "Expired: $DAYS_AGO days ago"
+    else
+        STATUS="Active"
+        echo "User: $USER"
+        echo "Status: $STATUS"
+        echo "Expires in: $DAYS_LEFT days"
+    fi
+
+    ;;
+
+delete)
+    USER="$2"
+
+    if [[ -z "$USER" ]]; then
+        echo "Usage: tunnel-manager delete <username>"
+        exit 1
+    fi
+
+    if ! id "$USER" &>/dev/null; then
+        echo "Error: User does not exist."
+        exit 1
+    fi
+
+    if ! userdel -r "$USER"; then
+        echo "Error: Failed to delete user."
+        exit 1
+    fi
+
+    echo "User deleted successfully."
+    ;;
+
+*)
+    echo "Tunnel Manager"
+    echo ""
+    echo "Commands:"
+    echo "  tunnel-manager add <username> <days>"
+    echo "  tunnel-manager extend <username> <days>"
+    echo "  tunnel-manager status <username>"
+    echo "  tunnel-manager delete <username>"
+    ;;
+
+esac
