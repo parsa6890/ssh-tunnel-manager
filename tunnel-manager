@@ -140,6 +140,52 @@ status)
 
     ;;
 
+list)
+    USERS=$(getent group "$GROUP" | cut -d: -f4)
+
+    if [[ -z "$USERS" ]]; then
+        echo "No tunnel users found."
+        exit 0
+    fi
+
+    echo "Tunnel Users"
+    echo "============"
+    echo ""
+    printf "%-12s %-10s %-16s %s\n" "Username" "Status" "Expires" "Days"
+    printf "%-12s %-10s %-16s %s\n" "--------" "------" "-------" "----"
+
+    IFS=',' read -ra USER_LIST <<< "$USERS"
+
+    for USER in "${USER_LIST[@]}"; do
+
+        EXPIRY=$(chage -l "$USER" | grep "Account expires" | cut -d: -f2 | xargs)
+
+        if [[ "$EXPIRY" == "never" ]]; then
+            printf "%-12s %-10s %-16s %s\n" \
+                "$USER" "Active" "Never" "-"
+            continue
+        fi
+
+        TODAY=$(date +%Y-%m-%d)
+
+        EXPIRY_SECONDS=$(date -d "$EXPIRY 00:00:00" +%s)
+        TODAY_SECONDS=$(date -d "$TODAY 00:00:00" +%s)
+
+        DAYS_LEFT=$(( (EXPIRY_SECONDS - TODAY_SECONDS) / 86400 ))
+
+        if [[ "$DAYS_LEFT" -lt 0 ]]; then
+            DAYS_AGO=$(( -DAYS_LEFT ))
+
+            printf "%-12s %-10s %-16s %s\n" \
+                "$USER" "Expired" "$EXPIRY" "$DAYS_AGO days ago"
+        else
+            printf "%-12s %-10s %-16s %s\n" \
+                "$USER" "Active" "$EXPIRY" "$DAYS_LEFT"
+        fi
+    done
+
+    ;;
+
 delete)
     USER="$2"
 
@@ -168,6 +214,7 @@ delete)
     echo "  tunnel-manager add <username> <days>"
     echo "  tunnel-manager extend <username> <days>"
     echo "  tunnel-manager status <username>"
+    echo "  tunnel-manager list"
     echo "  tunnel-manager delete <username>"
     ;;
 
